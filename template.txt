@@ -1,0 +1,27 @@
+market :
+
+http://localhost:5000/api/markets
+{
+  "question": "Will Bitcoin cross $100k by December?",
+  "description": "Prediction based on market trends.",
+  "category": "Crypto"
+}
+
+user : 
+
+http://localhost:5000/api/auth/register
+http://localhost:5000/api/auth/login
+{
+  "username": "nilay",
+  "email": "nilay@test.com",
+  "password": "password123"
+}
+
+trade :
+http://localhost:5000/api/trades
+{
+  "userId": "PASTE_USER_ID_HERE",
+  "marketId": "PASTE_MARKET_ID_HERE",
+  "side": "yes",
+  "quantity": 5
+}
