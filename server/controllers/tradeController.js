@@ -5,23 +5,30 @@ const Market = require('../models/Market');
 // --- BUY LOGIC ---
 exports.placeTrade = async (req, res) => {
   try {
-    const { userId, marketId, side, quantity } = req.body;
+    // Replaced 'side' with 'optionId' to target the specific poll choice
+    const { userId, marketId, optionId, quantity } = req.body;
     const market = await Market.findById(marketId);
     const user = await User.findById(userId);
 
     if (!market || !user) return res.status(404).json({ msg: "User or Market not found" });
 
+    // Locate the specific option subdocument
+    const targetOption = market.options.id(optionId);
+    if (!targetOption) return res.status(404).json({ msg: "Selected option not found" });
+
     const qty = Number(quantity);
-    const price = side === 'yes' ? market.yesPrice : market.noPrice;
+    
+    // Scale option values out of 100 to match your existing financial mechanics
+    const price = targetOption.currentValue <= 1 ? targetOption.currentValue * 100 : targetOption.currentValue;
     const totalCost = price * qty;
 
     if (user.walletBalance < totalCost) return res.status(400).json({ msg: "Insufficient balance" });
 
-    // 1. Create Trade Record as 'buy'
+    // 1. Create Trade Record as 'buy' (storing optionId in place of 'side')
     const newTrade = new Trade({
       userId,
       marketId,
-      side,
+      optionId, // Updated tracking property
       quantity: qty,
       pricePerShare: price,
       totalPrice: totalCost,
@@ -32,7 +39,7 @@ exports.placeTrade = async (req, res) => {
     // 2. Update User Balance & Portfolio
     user.walletBalance -= totalCost;
     const existingPosition = user.portfolio.find(
-      (p) => p.marketId.toString() === marketId && p.side === side
+      (p) => p.marketId.toString() === marketId && p.optionId?.toString() === optionId
     );
 
     if (existingPosition) {
@@ -40,22 +47,36 @@ exports.placeTrade = async (req, res) => {
       existingPosition.quantity += qty;
       existingPosition.avgPrice = (totalOldCost + totalCost) / existingPosition.quantity;
     } else {
-      user.portfolio.push({ marketId, side, quantity: qty, avgPrice: price });
+      // Storing optionId in user portfolio schema directly
+      user.portfolio.push({ marketId, optionId, quantity: qty, avgPrice: price });
     }
     await user.save();
 
-    // 3. Update Market Price
-    if (side === 'yes') {
-      market.yesPrice = Math.min(99, market.yesPrice + 1);
-      market.noPrice = 100 - market.yesPrice;
-    } else {
-      market.noPrice = Math.min(99, market.noPrice + 1);
-      market.yesPrice = 100 - market.noPrice;
+    // 3. Update Market Price (Dynamic Rebalancing)
+    // Add volume weight to the chosen asset option
+    targetOption.totalShares += qty;
+
+    const totalMarketShares = market.options.reduce((sum, opt) => sum + opt.totalShares, 0);
+
+    if (totalMarketShares > 0) {
+      market.options.forEach(opt => {
+        const shareRatio = opt.totalShares / totalMarketShares;
+        // Keep value pinned to your traditional 1-100 scale range
+        opt.currentValue = Math.max(1, Math.min(99, Math.round(shareRatio * 100)));
+      });
+
+      // Micro-adjustment logic block: Ensure entire market sum equals exactly 100
+      let discrepancySum = market.options.reduce((sum, opt) => sum + opt.currentValue, 0);
+      if (discrepancySum !== 100) {
+        const structuralDiff = 100 - discrepancySum;
+        targetOption.currentValue += structuralDiff; // Balance out remainder onto target option
+      }
     }
     await market.save();
 
+    // Broadcast new updated array configurations live to Socket Client layers
     const io = req.app.get('io');
-    io.emit('priceUpdate', { marketId: market._id, yesPrice: market.yesPrice, noPrice: market.noPrice });
+    io.emit('priceUpdate', { marketId: market._id, options: market.options });
 
     res.json({ msg: "Buy Successful!", newBalance: user.walletBalance });
   } catch (err) {
@@ -65,60 +86,79 @@ exports.placeTrade = async (req, res) => {
 
 // --- SELL LOGIC ---
 exports.sellTrade = async (req, res) => {
-    try {
-        const { userId, marketId, side, quantity } = req.body;
-        const qtyToSell = Number(quantity);
+  try {
+    const { userId, marketId, optionId, quantity } = req.body;
+    const qtyToSell = Number(quantity);
 
-        const user = await User.findById(userId);
-        const market = await Market.findById(marketId);
+    const user = await User.findById(userId);
+    const market = await Market.findById(marketId);
 
-        const positionIndex = user.portfolio.findIndex(
-            (p) => p.marketId.toString() === marketId && p.side === side
-        );
+    if (!market || !user) return res.status(404).json({ msg: "User or Market not found" });
 
-        if (positionIndex === -1 || user.portfolio[positionIndex].quantity < qtyToSell) {
-            return res.status(400).json({ msg: "Insufficient shares to sell! ❌" });
-        }
+    const targetOption = market.options.id(optionId);
+    if (!targetOption) return res.status(404).json({ msg: "Selected option not found" });
 
-        const currentPrice = side === 'yes' ? market.yesPrice : market.noPrice;
-        const payout = currentPrice * qtyToSell;
+    // Match inventory using optionId instead of 'side'
+    const positionIndex = user.portfolio.findIndex(
+      (p) => p.marketId.toString() === marketId && p.optionId?.toString() === optionId
+    );
 
-        // 1. Update User Data
-        user.walletBalance += payout;
-        user.portfolio[positionIndex].quantity -= qtyToSell;
-
-        if (user.portfolio[positionIndex].quantity === 0) {
-            user.portfolio.splice(positionIndex, 1);
-        }
-        await user.save();
-
-        // 2. Create "Sell" History Record
-        const sellRecord = new Trade({
-            userId, 
-            marketId, 
-            side, 
-            quantity: qtyToSell,
-            pricePerShare: currentPrice, 
-            totalPrice: payout, 
-            type: 'sell' // <--- This MUST be here
-        });
-        await sellRecord.save();
-
-        // 3. Update Market Price
-        if (side === 'yes') {
-            market.yesPrice = Math.max(1, market.yesPrice - 1);
-            market.noPrice = 100 - market.yesPrice;
-        } else {
-            market.noPrice = Math.max(1, market.noPrice - 1);
-            market.yesPrice = 100 - market.noPrice;
-        }
-        await market.save();
-
-        const io = req.app.get('io');
-        io.emit('priceUpdate', { marketId, yesPrice: market.yesPrice, noPrice: market.noPrice });
-
-        res.json({ msg: "Sale Successful! ✅", newBalance: user.walletBalance });
-    } catch (err) {
-        res.status(500).json({ error: err.message });
+    if (positionIndex === -1 || user.portfolio[positionIndex].quantity < qtyToSell) {
+      return res.status(400).json({ msg: "Insufficient shares to sell! ❌" });
     }
+
+    const currentPrice = targetOption.currentValue;
+    const payout = currentPrice * qtyToSell;
+
+    // 1. Update User Data
+    user.walletBalance += payout;
+    user.portfolio[positionIndex].quantity -= qtyToSell;
+
+    if (user.portfolio[positionIndex].quantity === 0) {
+      user.portfolio.splice(positionIndex, 1);
+    }
+    await user.save();
+
+    // 2. Create "Sell" History Record
+    const sellRecord = new Trade({
+      userId, 
+      marketId, 
+      optionId, 
+      quantity: qtyToSell,
+      pricePerShare: currentPrice, 
+      totalPrice: payout, 
+      type: 'sell'
+    });
+    await sellRecord.save();
+
+    // 3. Update Market Price (Deducting shares shifts price distribution downward)
+    targetOption.totalShares = Math.max(0, targetOption.totalShares - qtyToSell);
+
+    const totalMarketShares = market.options.reduce((sum, opt) => sum + opt.totalShares, 0);
+
+    if (totalMarketShares > 0) {
+      market.options.forEach(opt => {
+        const shareRatio = opt.totalShares / totalMarketShares;
+        opt.currentValue = Math.max(1, Math.min(99, Math.round(shareRatio * 100)));
+      });
+
+      let discrepancySum = market.options.reduce((sum, opt) => sum + opt.currentValue, 0);
+      if (discrepancySum !== 100) {
+        const structuralDiff = 100 - discrepancySum;
+        market.options[0].currentValue += structuralDiff; // Flatten rounding offset error parameters
+      }
+    } else {
+      // Fallback state if no positions exist anywhere: reset to perfectly even distribution
+      const baselineVal = Math.round(100 / market.options.length);
+      market.options.forEach(opt => opt.currentValue = baselineVal);
+    }
+    await market.save();
+
+    const io = req.app.get('io');
+    io.emit('priceUpdate', { marketId, options: market.options });
+
+    res.json({ msg: "Sale Successful! ✅", newBalance: user.walletBalance });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 };
