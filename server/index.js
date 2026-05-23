@@ -52,7 +52,7 @@ app.use('/api/trades', require('./routes/tradeRoutes.js'));
 
 // 7. Start the Server
 const PORT = process.env.PORT || 5000; 
-server.listen(PORT, () => console.log(`Server on port ${PORT}`));
+// server.listen(PORT, () => console.log(`Server on port ${PORT}`));
 app.listen(PORT, () => {
   console.log(`🚀 Server is sprinting on port ${PORT}`);
   console.log(`🔗 Local URL: http://localhost:${PORT}`);
