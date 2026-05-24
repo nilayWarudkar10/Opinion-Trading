@@ -25,12 +25,12 @@ const Dashboard = () => {
         // 3. Socket.io Connection
         const socket = io('http://localhost:5000');
 
-        // Listener A: Live Price Updates (Updated to swap entire dynamic options array)
+        // Listener A: Live Price Updates
         socket.on('priceUpdate', (data) => {
             setMarkets((prevMarkets) =>
                 prevMarkets.map((m) =>
                     m._id === data.marketId 
-                        ? { ...m, options: data.options } 
+                        ? { ...m, yesPrice: data.yesPrice, noPrice: data.noPrice } 
                         : m
                 )
             );
@@ -39,9 +39,10 @@ const Dashboard = () => {
         // Listener B: Live New Market Addition
         socket.on('newMarket', (newMarket) => {
             setMarkets((prevMarkets) => {
+                // Check if market already exists (prevents duplicates from polling)
                 const exists = prevMarkets.find(m => m._id === newMarket._id);
                 if (exists) return prevMarkets;
-                return [newMarket, ...prevMarkets];
+                return [newMarket, ...prevMarkets]; // Add to top of list
             });
         });
 
@@ -51,15 +52,6 @@ const Dashboard = () => {
             socket.disconnect();
         };
     }, []);
-
-    // Helper palette to give multiple options distinct colors in the progress stack
-    const colors = [
-        'bg-blue-500 text-blue-400 border-blue-500/30 hover:bg-blue-500/20 bg-blue-500/10',
-        'bg-purple-500 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 bg-purple-500/10',
-        'bg-amber-500 text-amber-400 border-amber-500/30 hover:bg-amber-500/20 bg-amber-500/10',
-        'bg-emerald-500 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20 bg-emerald-500/10',
-        'bg-pink-500 text-pink-400 border-pink-500/30 hover:bg-pink-500/20 bg-pink-500/10'
-    ];
 
     return (
         <div className="min-h-screen bg-slate-950 p-8 text-white">
@@ -82,50 +74,50 @@ const Dashboard = () => {
                                 {market.question}
                             </h3>
 
-                            {/* Multi-Option Sentiment Label Stack */}
-                            <div className="space-y-1 mb-3">
-                                {market.options?.map((option, index) => (
-                                    <div key={option._id} className="flex justify-between text-[10px] font-black uppercase tracking-widest">
-                                        <span className={colors[index].split(' ')[1]}>{option.title}</span>
-                                        <span className={colors[index].split(' ')[1]}>{option.currentValue}%</span>
-                                    </div>
-                                ))}
-                            </div>
-
-                            {/* Multi-Segment Custom Progress Metric Bar */}
-                            <div className="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden flex mb-6 border border-slate-950">
-                                {market.options?.map((option, index) => (
+                            {/* Sentiment Bar */}
+                            <div className="mb-6">
+                                <div className="flex justify-between text-[10px] font-black mb-2 uppercase tracking-widest">
+                                    <span className="text-emerald-400">Yes {market.yesPrice}%</span>
+                                    <span className="text-rose-400">{market.noPrice}% No</span>
+                                </div>
+                                <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden flex">
                                     <div
-                                        key={option._id}
-                                        className={`h-full transition-all duration-700 ease-in-out ${colors[index].split(' ')[0]}`}
-                                        style={{ width: `${option.currentValue}%` }}
+                                        className="h-full bg-emerald-500 transition-all duration-700 ease-in-out"
+                                        style={{ width: `${market.yesPrice}%` }}
                                     ></div>
-                                ))}
+                                    <div
+                                        className="h-full bg-rose-500 transition-all duration-700 ease-in-out"
+                                        style={{ width: `${market.noPrice}%` }}
+                                    ></div>
+                                </div>
                             </div>
                         </div>
 
-                        {/* Action Buttons: Iterates layout automatically based on option capacity (2 to 5 columns) */}
-                        <div className="flex flex-col gap-2">
-                            {market.options?.map((option, index) => (
-                                <button
-                                    key={option._id}
-                                    onClick={() => setSelectedTrade({ market, option })}
-                                    className={`w-full border text-left px-4 py-2.5 rounded-xl font-bold text-sm transition-all flex justify-between items-center transform active:scale-[0.98] ${colors[index].split(' ').slice(2).join(' ')}`}
-                                >
-                                    <span className="truncate pr-2">{option.title}</span>
-                                    <span className="font-mono tracking-tight font-black">₹{option.currentValue}</span>
-                                </button>
-                            ))}
+                        {/* Action Buttons */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => setSelectedTrade({ market, side: 'yes' })}
+                                className="flex-1 bg-emerald-500/10 border border-emerald-500/50 text-emerald-400 py-3 rounded-xl font-bold hover:bg-emerald-500 hover:text-white transition-all transform active:scale-95"
+                            >
+                                Yes ₹{market.yesPrice}
+                            </button>
+
+                            <button
+                                onClick={() => setSelectedTrade({ market, side: 'no' })}
+                                className="flex-1 bg-rose-500/10 border border-rose-500/50 text-rose-400 py-3 rounded-xl font-bold hover:bg-rose-500 hover:text-white transition-all transform active:scale-95"
+                            >
+                                No ₹{market.noPrice}
+                            </button>
                         </div>
                     </div>
                 ))}
             </div>
 
-            {/* Overlay Modal (Updated to pass downstream target choice structures) */}
+            {/* Overlay Modal */}
             {selectedTrade && (
                 <TradeModal
                     market={selectedTrade.market}
-                    option={selectedTrade.option} // Changed property reference hook
+                    side={selectedTrade.side}
                     onClose={() => setSelectedTrade(null)}
                 />
             )}

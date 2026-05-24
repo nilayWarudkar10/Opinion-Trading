@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const Admin = () => {
-  const [form, setForm] = useState({ question: '', category: ' ' });
+  const [form, setForm] = useState({ question: '', category: 'Sports' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await axios.post('http://localhost:5000/api/markets/add', form);
       alert("Market Created! 🚀");
-      setForm({ question: '', category: '' });
+      setForm({ question: '', category: 'Sports' });
     } catch (err) {
       alert("Failed to create market");
     }
@@ -32,15 +32,6 @@ const Admin = () => {
           <option>Sports</option>
           <option>Crypto</option>
           <option>Politics</option>
-          <option>Hollywood</option>
-          <option>Bollywood</option>
-          <option>Tollywood</option>
-          <option>Business</option>
-          <option>Current Affairs</option>
-          <option>Nature</option>
-          <option>Real estate</option>
-          <option>Fiction</option>
-          <option>Anime</option>
         </select>
         <button className="w-full bg-blue-600 py-4 rounded-xl font-bold text-white hover:bg-blue-500 transition-all">
           Launch Market
