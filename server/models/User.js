@@ -5,12 +5,10 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   walletBalance: { type: Number, default: 500, required: true },
-  
-  // Stores dynamic option context tracking records
   portfolio: [
     {
       marketId: { type: mongoose.Schema.Types.ObjectId, ref: 'Market' },
-      optionId: { type: mongoose.Schema.Types.ObjectId }, // Tracks specific option picked
+      optionId: { type: mongoose.Schema.Types.ObjectId }, // Track dynamic choice IDs
       quantity: { type: Number, default: 0 },
       avgPrice: { type: Number, default: 0 }
     }

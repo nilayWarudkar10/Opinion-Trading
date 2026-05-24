@@ -7,20 +7,25 @@ router.post('/', createMarket);
 router.get('/', getMarkets);
 
 // Admin Quick Add Route updated to use dynamic array pricing rules
+// Admin Route: POST http://localhost:5000/api/markets/add
 router.post('/add', async (req, res) => {
     try {
         const { question, category, optionTitles } = req.body;
 
-        if (!question || !category) {
-            return res.status(400).json({ msg: "Please fill all fields" });
+        if (!question || !category || !optionTitles || !Array.isArray(optionTitles)) {
+            return res.status(400).json({ msg: "Please fill all fields and provide valid choices." });
         }
 
-        // Fallback options layout if admin doesn't provide them explicitly
-        const titles = optionTitles && Array.isArray(optionTitles) ? optionTitles : ["Yes", "No"];
-        const cleanOptions = titles.filter(t => t.trim() !== '');
+        const cleanOptions = optionTitles.filter(title => title.trim() !== '');
         const numOptions = cleanOptions.length;
 
-        const initialShareValue = parseFloat((1 / numOptions).toFixed(4));
+        if (numOptions < 2 || numOptions > 5) {
+            return res.status(400).json({ msg: "Markets must have between 2 and 5 choices." });
+        }
+
+        // 1 / number of options = Initial Price Distribution
+        const initialShareValue = Math.round(100 / numOptions);
+
         const formattedOptions = cleanOptions.map(title => ({
             title: title.trim(),
             currentValue: initialShareValue,
@@ -28,11 +33,10 @@ router.post('/add', async (req, res) => {
         }));
 
         const newMarket = new Market({
-            question,
+            question: question.trim(),
             category,
-            description: "New market prediction.",
             options: formattedOptions,
-            status: "active",
+            description: "New prediction pool open for speculation.",
             totalLiquidity: 0
         });
 

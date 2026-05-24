@@ -2,24 +2,24 @@ import React, { useState, useContext } from 'react';
 import axios from 'axios';
 import { AuthContext } from '../context/AuthContext';
 
-const TradeModal = ({ market, side, onClose }) => {
+const TradeModal = ({ market, option, onClose }) => {
   const { user, refreshUser } = useContext(AuthContext);
   const [tradeType, setTradeType] = useState('buy'); // Toggle between 'buy' and 'sell'
   const [quantity, setQuantity] = useState(1);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
-  // 1. Logic to find how many shares the user actually owns of this side
+  // Find owned shares based on the selected option ID instead of 'side'
   const currentPosition = user?.portfolio?.find(
-  (p) => p.marketId.toString() === market._id.toString() && p.side === side
-);
+    (p) => p.marketId?._id?.toString() === market._id.toString() && p.optionId?.toString() === option._id.toString()
+  );
   const ownedQty = currentPosition ? currentPosition.quantity : 0;
 
-  const price = side === 'yes' ? market.yesPrice : market.noPrice;
+  // Pull current option share value straight from your real-time array state
+  const price = option.currentValue;
   const totalAmount = price * Number(quantity);
 
   const handleAction = async () => {
-    // Basic validation
     if (tradeType === 'sell' && Number(quantity) > ownedQty) {
       setMessage("You don't own enough shares! ❌");
       return;
@@ -31,13 +31,12 @@ const TradeModal = ({ market, side, onClose }) => {
 
     setLoading(true);
     try {
-      // Determine endpoint based on Buy or Sell
       const endpoint = tradeType === 'buy' ? '/api/trades' : '/api/trades/sell';
 
       const tradeData = {
         userId: user.id,
         marketId: market._id,
-        side: side,
+        optionId: option._id, // Relink payloads to track target choice IDs
         quantity: Number(quantity)
       };
 
@@ -49,7 +48,7 @@ const TradeModal = ({ market, side, onClose }) => {
       await refreshUser();
 
       setTimeout(() => {
-        onClose(); // Close modal instead of full reload for smoother UX
+        onClose();
       }, 1500);
 
     } catch (err) {
@@ -66,12 +65,14 @@ const TradeModal = ({ market, side, onClose }) => {
         {/* Buy/Sell Toggle */}
         <div className="flex bg-slate-950 p-1 rounded-2xl mb-6 border border-slate-800">
           <button
+            type="button"
             onClick={() => { setTradeType('buy'); setMessage(''); }}
             className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'buy' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
           >
             BUY
           </button>
           <button
+            type="button"
             onClick={() => { setTradeType('sell'); setMessage(''); }}
             className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'sell' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
           >
@@ -80,7 +81,7 @@ const TradeModal = ({ market, side, onClose }) => {
         </div>
 
         <h2 className="text-xl font-bold mb-1 text-white">
-          {tradeType === 'buy' ? 'Buying' : 'Selling'} {side.toUpperCase()}
+          {tradeType === 'buy' ? 'Buying' : 'Selling'} {option.title.toUpperCase()}
         </h2>
         <p className="text-slate-400 mb-6 text-sm leading-relaxed">{market.question}</p>
 
@@ -102,7 +103,7 @@ const TradeModal = ({ market, side, onClose }) => {
           <input
             type="number"
             value={quantity}
-            onChange={(e) => setQuantity(e.target.value)}
+            onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 0))}
             className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl text-white font-bold focus:border-blue-500 outline-none transition-all"
             min="1"
             max={tradeType === 'sell' ? ownedQty : undefined}
@@ -123,10 +124,11 @@ const TradeModal = ({ market, side, onClose }) => {
         )}
 
         <div className="flex gap-4">
-          <button onClick={onClose} className="flex-1 py-4 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
+          <button type="button" onClick={onClose} className="flex-1 py-4 rounded-xl font-bold text-slate-400 hover:bg-slate-800 hover:text-white transition-all">
             Cancel
           </button>
           <button
+            type="button"
             onClick={handleAction}
             disabled={loading || (tradeType === 'sell' && ownedQty === 0)}
             className={`flex-1 py-4 rounded-xl font-bold text-white transition-all shadow-lg disabled:opacity-30 ${tradeType === 'buy' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20' : 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/20'}`}
