@@ -36,6 +36,8 @@ const TradeModal = ({ market, side, onClose }) => {
     }
   }
 
+  const payoutDisplayAmount = tradeType === 'buy' ? totalAmount : totalAmount + 1;
+
   const handleAction = async () => {
     if (qtyInput <= 0) {
       setMessage("Please enter a valid quantity! ❌");
@@ -90,29 +92,29 @@ const TradeModal = ({ market, side, onClose }) => {
             onClick={() => { setTradeType('buy'); setMessage(''); }}
             className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'buy' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
           >
-            BUY
+            Buy
           </button>
           <button
             type="button"
             onClick={() => { setTradeType('sell'); setMessage(''); }}
             className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'sell' ? 'bg-rose-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
           >
-            SELL
+            Sell
           </button>
         </div>
 
         <h2 className="text-xl font-bold mb-1 text-white">
-          {tradeType === 'buy' ? 'Buying' : 'Selling'} {side.toUpperCase()}
+          {tradeType === 'buy' ? 'Buying' : 'Selling'} {side.charAt(0).toUpperCase() + side.slice(1)}
         </h2>
         <p className="text-slate-400 mb-6 text-sm leading-relaxed">{market.question}</p>
 
-        <div className="bg-slate-800/40 p-5 rounded-2xl mb-6 border border-slate-800/50">
+        <div className="mb-6">
           <div className="flex justify-between mb-3 text-sm">
-            <span className="text-slate-400 text-xs uppercase font-bold tracking-wider">Current Spot Price:</span>
+            <span className="text-slate-400 text-xs font-bold tracking-wider">Current Spot Price:</span>
             <span className="font-mono font-bold text-white">₹{currentSpotPrice}</span>
           </div>
           <div className="flex justify-between text-sm">
-            <span className="text-slate-400 text-xs uppercase font-bold tracking-wider">You Own:</span>
+            <span className="text-slate-400 text-xs font-bold tracking-wider">You Own:</span>
             <span className={`font-mono font-bold ${ownedQty > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
               {ownedQty} shares
             </span>
@@ -120,7 +122,7 @@ const TradeModal = ({ market, side, onClose }) => {
         </div>
 
         <div className="mb-6">
-          <label className="block text-xs font-black text-slate-500 mb-2 uppercase tracking-widest">Quantity</label>
+          <label className="block text-xs font-black text-slate-500 mb-2 tracking-widest">Quantity</label>
           <input
             type="number"
             value={quantity}
@@ -130,12 +132,12 @@ const TradeModal = ({ market, side, onClose }) => {
           />
         </div>
 
-        <div className="flex justify-between items-center bg-slate-950/40 p-5 border border-slate-800/60 rounded-2xl mb-8">
+        <div className="mb-8 flex items-center justify-between">
           <span className="text-slate-300 font-bold">
             {tradeType === 'buy' ? 'Total Cost (With Slippage)' : 'Expected Payout'}:
           </span>
           <span className={`text-3xl font-black font-mono tracking-tight ${tradeType === 'buy' ? 'text-white' : 'text-emerald-400'}`}>
-            ₹{totalAmount}
+            ₹{payoutDisplayAmount}
           </span>
         </div>
 
