@@ -1,6 +1,6 @@
 .env
 server/node_modules
 client/node_modules
-info.txt
-template.txt
-test.html
+/info.txt
+/template.txt
+/test.html
