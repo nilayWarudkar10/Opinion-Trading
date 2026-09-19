@@ -22,14 +22,14 @@ exports.placeTrade = async (req, res) => {
     }
 
     console.log("====================================");
-    console.log(`📈 BONDING CURVE INTEGRAL BUY -> Side: ${side.toUpperCase()}`);
+    console.log(`BONDING CURVE INTEGRAL BUY -> Side: ${side.toUpperCase()}`);
 
     const market = await Market.findById(marketId);
     if (!market || market.status !== 'active') {
       return res.status(400).json({ msg: "Market not found or inactive" });
     }
 
-    // 🚨 FIX: Extract the starting shares dedicated strictly to the active side
+    // Extract the starting shares dedicated strictly to the active side
     const startingShares = Number(side === 'yes' ? market.totalYesShares : market.totalNoShares) || 0;
     const endingShares = startingShares + qty;
     const totalCost = integralCost(startingShares, endingShares);
@@ -38,7 +38,7 @@ exports.placeTrade = async (req, res) => {
 
     const existingUser = await User.findById(userId);
     if (!existingUser || parseInt(existingUser.walletBalance, 10) < totalCost) {
-      return res.status(400).json({ msg: "Insufficient balance! ❌" });
+      return res.status(400).json({ msg: "Insufficient balance!" });
     }
 
     const positionIndex = existingUser.portfolio.findIndex(
@@ -57,14 +57,17 @@ exports.placeTrade = async (req, res) => {
       userUpdateQuery = {
         $inc: { walletBalance: -totalCost },
         $push: { 
-          portfolio: { marketId: market._id, side, quantity: qty, avgPrice: totalCost / qty }
+          portfolio: {
+            $each: [{ marketId: market._id, side, quantity: qty, avgPrice: totalCost / qty }],
+            $position: 0
+          }
         }
       };
     }
 
     const updatedUser = await User.findByIdAndUpdate(userId, userUpdateQuery, { returnDocument: 'after' });
 
-    // 🚨 FIX: Save the new totals directly to their distinct inventory variables
+    // Save the new totals directly to their distinct inventory variables
     if (side === 'yes') {
       market.totalYesShares = endingShares;
       market.yesPrice = curvePrice(endingShares);
@@ -93,7 +96,7 @@ exports.placeTrade = async (req, res) => {
       });
     }
 
-    return res.json({ msg: "Buy Successful! ✅", walletBalance: updatedUser.walletBalance });
+    return res.json({ msg: "Buy Successful!", walletBalance: updatedUser.walletBalance });
 
   } catch (err) {
     console.error("INTEGRAL BUY ERROR:", err);
@@ -112,7 +115,7 @@ exports.sellTrade = async (req, res) => {
     }
 
     console.log("====================================");
-    console.log(`📉 BONDING CURVE INTEGRAL SELL -> Side: ${side.toUpperCase()}`);
+    console.log(`BONDING CURVE INTEGRAL SELL -> Side: ${side.toUpperCase()}`);
 
     const user = await User.findById(userId);
     const market = await Market.findById(marketId);
@@ -123,14 +126,14 @@ exports.sellTrade = async (req, res) => {
     );
 
     if (positionIndex === -1 || user.portfolio[positionIndex].quantity < qtyToSell) {
-      return res.status(400).json({ msg: "Insufficient shares to sell! ❌" });
+      return res.status(400).json({ msg: "Insufficient shares to sell!" });
     }
 
-    // 🚨 STEP 1: Capture the exact, unmodified historical pool matching the traded asset side
+    // Capture the exact, unmodified historical pool matching the traded asset side
     const startingShares = Number(side === 'yes' ? market.totalYesShares : market.totalNoShares) || 0;
     const endingShares = startingShares - qtyToSell;
     if (endingShares < 0) {
-      return res.status(400).json({ msg: "Market supply cannot cover this sale! ❌" });
+      return res.status(400).json({ msg: "Market supply cannot cover this sale!" });
     }
 
     const totalPayout = integralCost(endingShares, startingShares);
@@ -138,7 +141,7 @@ exports.sellTrade = async (req, res) => {
     console.log(`Guaranteed Total Payout: ₹${totalPayout}`);
 
     if ((market.totalLiquidity || 0) < totalPayout) {
-      return res.status(400).json({ msg: "Insufficient market liquidity! ❌" });
+      return res.status(400).json({ msg: "Insufficient market liquidity!" });
     }
 
     // STEP 3: Write structural properties back to database documents
@@ -189,7 +192,7 @@ exports.sellTrade = async (req, res) => {
       });
     }
 
-    return res.json({ msg: "Sale Successful! ✅", walletBalance: updatedUser.walletBalance });
+    return res.json({ msg: "Sale Successful!", walletBalance: updatedUser.walletBalance });
 
   } catch (err) {
     console.error("INTEGRAL SELL ERROR:", err);

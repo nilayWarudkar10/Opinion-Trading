@@ -2,8 +2,11 @@ const User = require('../models/User');
 
 exports.getUserPortfolio = async (req, res) => {
   try {
-    // We populate 'marketId' to get the Question text, not just the ID number
-    const user = await User.findById(req.params.userId).populate('portfolio.marketId');
+    // Return the market question needed by the portfolio Asset column.
+    const user = await User.findById(req.params.userId).populate({
+      path: 'portfolio.marketId',
+      select: 'question'
+    });
     
     if (!user) return res.status(404).json({ msg: "User not found" });
 

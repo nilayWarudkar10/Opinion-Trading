@@ -10,7 +10,7 @@ router.get('/', getMarkets);
 // 2. Admin Route: POST http://localhost:5000/api/markets/add
 router.post('/add', async (req, res) => {
     try {
-        const { question, category } = req.body;
+        const { question, category, description, yesLabel, noLabel } = req.body;
 
         // Validation
         if (!question || !category) {
@@ -20,10 +20,12 @@ router.post('/add', async (req, res) => {
         const newMarket = new Market({
             question,
             category,
+            description: description || "New market prediction.",
+            yesLabel: yesLabel?.trim() || "Yes",
+            noLabel: noLabel?.trim() || "No",
             yesPrice: 50,      // Ensure this is 50
             noPrice: 50,       // Ensure this is 50
             status: "active",  // CRITICAL: Must match your old data
-            description: "New market prediction.", // Default description
             totalLiquidity: 0  // Set to 0
         });
 

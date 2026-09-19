@@ -3,7 +3,7 @@ import React from 'react';
 // 'market' is the data we get from our MongoDB (question, prices, etc.)
 const MarketCard = ({ market }) => {
   return (
-    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl hover:border-blue-500 transition-all">
+    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl shadow-xl hover:border-[#046909] transition-all">
       <h3 className="text-xl font-bold text-white mb-2">{market.question}</h3>
       <p className="text-slate-400 text-sm mb-6">{market.description}</p>
       

@@ -46,7 +46,7 @@ const MainApp = () => {
           }`}
         >
           <div className="mb-8 flex items-center justify-between">
-            <span className="text-sm font-semibold tracking-[0.35em] text-sky-300">Opinion Trading</span>
+            <span className="text-lg font-black tracking-[0.3em] text-[#6d9cf2]">Opinion Trading</span>
             <button
               onClick={() => setMenuOpen(false)}
               className="rounded-full px-2 py-1 text-xs text-slate-300 transition hover:bg-slate-800"
@@ -95,7 +95,7 @@ const MainApp = () => {
               </button>
 
               <div className="flex items-center gap-3">
-                <span className="text-lg font-semibold tracking-[0.15em] text-sky-300">Opinion Trading</span>
+                <span className="text-2xl font-black tracking-[0.12em] text-[#6d9cf2]">Opinion Trading</span>
               </div>
 
               <div className="ml-auto flex items-center gap-2 px-1 py-1.5">

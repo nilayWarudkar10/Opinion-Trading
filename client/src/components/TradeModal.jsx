@@ -10,12 +10,13 @@ const TradeModal = ({ market, side, onClose }) => {
   const [message, setMessage] = useState('');
 
   // 1. Logic to find how many shares the user actually owns of this side
-  const currentPosition = user?.portfolio?.find(
-    (p) => p.marketId.toString() === market._id.toString() && p.side === side
-  );
+  const currentPosition = user?.portfolio?.find((position) => {
+    const positionMarketId = position.marketId?._id || position.marketId;
+    return positionMarketId?.toString() === market._id?.toString() && position.side === side;
+  });
   const ownedQty = currentPosition ? currentPosition.quantity : 0;
 
-  // 🚨 INTEGRAL ENGINE SIMULATOR FOR FRONTEND DISPLAY ALIGNMENT
+  // Integral engine simulator for frontend display alignment
   const basePrice = 50; 
   const currentSpotPrice = side === 'yes' ? market.yesPrice : market.noPrice;
   
@@ -40,15 +41,15 @@ const TradeModal = ({ market, side, onClose }) => {
 
   const handleAction = async () => {
     if (qtyInput <= 0) {
-      setMessage("Please enter a valid quantity! ❌");
+      setMessage("Please enter a valid quantity!");
       return;
     }
     if (tradeType === 'sell' && qtyInput > ownedQty) {
-      setMessage("You don't own enough shares! ❌");
+      setMessage("You don't own enough shares!");
       return;
     }
     if (tradeType === 'buy' && totalAmount > (user.balance || user.walletBalance)) {
-      setMessage("Insufficient balance! ❌");
+      setMessage("Insufficient balance!");
       return;
     }
 
@@ -65,7 +66,7 @@ const TradeModal = ({ market, side, onClose }) => {
 
       await axios.post(`http://localhost:5000${endpoint}`, tradeData);
 
-      setMessage(`${tradeType === 'buy' ? 'Bought' : 'Sold'} Successfully! ✅`);
+      setMessage(`${tradeType === 'buy' ? 'Bought' : 'Sold'} Successfully!`);
 
       // Sync user state containers
       await refreshUser();
@@ -75,7 +76,7 @@ const TradeModal = ({ market, side, onClose }) => {
       }, 1500);
 
     } catch (err) {
-      setMessage(err.response?.data?.msg || "Transaction Failed ❌");
+      setMessage(err.response?.data?.msg || "Transaction Failed");
     } finally {
       setLoading(false);
     }
@@ -90,7 +91,7 @@ const TradeModal = ({ market, side, onClose }) => {
           <button
             type="button"
             onClick={() => { setTradeType('buy'); setMessage(''); }}
-            className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'buy' ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
+            className={`flex-1 py-3 rounded-xl font-bold transition-all ${tradeType === 'buy' ? 'bg-[#6d9cf2] text-white shadow-lg' : 'text-slate-500 hover:text-white'}`}
           >
             Buy
           </button>
@@ -115,7 +116,7 @@ const TradeModal = ({ market, side, onClose }) => {
           </div>
           <div className="flex justify-between text-sm">
             <span className="text-slate-400 text-xs font-bold tracking-wider">You Own:</span>
-            <span className={`font-mono font-bold ${ownedQty > 0 ? 'text-blue-400' : 'text-slate-500'}`}>
+            <span className={`font-mono font-bold ${ownedQty > 0 ? 'text-[#6d9cf2]' : 'text-slate-500'}`}>
               {ownedQty} shares
             </span>
           </div>
@@ -127,7 +128,7 @@ const TradeModal = ({ market, side, onClose }) => {
             type="number"
             value={quantity}
             onChange={(e) => setQuantity(e.target.value)}
-            className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl text-white font-mono text-xl font-bold focus:border-blue-500 outline-none transition-all"
+            className="w-full bg-slate-950 border border-slate-800 p-4 rounded-xl text-white font-mono text-xl font-bold focus:border-[#6d9cf2] outline-none transition-all"
             min="1"
           />
         </div>
@@ -142,7 +143,7 @@ const TradeModal = ({ market, side, onClose }) => {
         </div>
 
         {message && (
-          <div className={`text-center p-3 rounded-xl mb-4 text-sm font-bold ${message.includes('✅') ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
+          <div className={`text-center p-3 rounded-xl mb-4 text-sm font-bold ${message.includes('Successfully') ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'}`}>
             {message}
           </div>
         )}
@@ -155,7 +156,7 @@ const TradeModal = ({ market, side, onClose }) => {
             type="button"
             onClick={handleAction}
             disabled={loading || (tradeType === 'sell' && ownedQty === 0)}
-            className={`flex-1 py-4 rounded-xl font-bold text-white transition-all shadow-lg disabled:opacity-30 ${tradeType === 'buy' ? 'bg-blue-600 hover:bg-blue-500 shadow-blue-900/20' : 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/20'}`}
+            className={`flex-1 py-4 rounded-xl font-bold text-white transition-all shadow-lg disabled:opacity-30 ${tradeType === 'buy' ? 'bg-[#6d9cf2] hover:bg-[#5d87d6] shadow-[#6d9cf2]/20' : 'bg-rose-600 hover:bg-rose-500 shadow-rose-900/20'}`}
           >
             {loading ? "Processing..." : `Confirm ${tradeType === 'buy' ? 'Purchase' : 'Sale'}`}
           </button>

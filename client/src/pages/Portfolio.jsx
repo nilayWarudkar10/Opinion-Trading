@@ -40,7 +40,7 @@ const Portfolio = () => {
             </div>
             <div className="min-w-0 rounded-3xl border-l-0 border-slate-700/80 p-5 text-right sm:border-l">
               <p className="text-xs tracking-[0.23em] text-slate-500">Recent trades</p>
-              <p className="mt-4 text-3xl font-black text-sky-400">{history.length}</p>
+              <p className="mt-4 text-3xl font-black text-[#6d9cf2]">{history.length}</p>
             </div>
           </div>
         </div>
@@ -55,13 +55,13 @@ const Portfolio = () => {
             <div className="flex gap-3 p-2">
               <button
                 onClick={() => setActiveTab('holdings')}
-                className={`rounded-2xl px-4 py-2 text-xs font-semibold tracking-[0.2em] transition ${activeTab === 'holdings' ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`rounded-2xl px-4 py-2 text-xs font-semibold tracking-[0.2em] transition ${activeTab === 'holdings' ? 'bg-[#6d9cf2] text-slate-950' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
                 Holdings
               </button>
               <button
                 onClick={() => setActiveTab('history')}
-                className={`rounded-2xl px-4 py-2 text-xs font-semibold tracking-[0.2em] transition ${activeTab === 'history' ? 'bg-sky-500 text-slate-950' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={`rounded-2xl px-4 py-2 text-xs font-semibold tracking-[0.2em] transition ${activeTab === 'history' ? 'bg-[#6d9cf2] text-slate-950' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
               >
                 History
               </button>
@@ -71,7 +71,7 @@ const Portfolio = () => {
           {activeTab === 'holdings' ? (
             <div className="mt-6 overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-left">
-                <thead className="bg-slate-950/70 text-slate-500 text-xs font-black tracking-widest">
+                <thead className="bg-slate-950/70 text-slate-500 text-sm font-black tracking-widest">
                   <tr>
                     <th className="p-5">Asset</th>
                     <th className="p-5">Position</th>
@@ -88,7 +88,9 @@ const Portfolio = () => {
                   ) : (
                     data.portfolio.map((item, i) => (
                       <tr key={i} className="hover:bg-white/[0.02] transition-colors">
-                        <td className="p-5 font-semibold text-slate-200">{item.marketId?.question}</td>
+                        <td className="p-5 font-semibold text-slate-200">
+                          {item.marketId?.question || 'Market unavailable'}
+                        </td>
                         <td className="p-5">
                           <span
                             className={`inline-flex px-3 py-1 text-xs font-black tracking-tighter ${
@@ -100,7 +102,7 @@ const Portfolio = () => {
                             {item.side === 'yes' ? 'Yes' : 'No'}
                           </span>
                         </td>
-                        <td className="p-5 text-right font-mono font-bold text-sky-300">{item.quantity}</td>
+                        <td className="p-5 text-right font-mono font-bold text-[#6d9cf2]">{item.quantity}</td>
                       </tr>
                     ))
                   )}
@@ -110,7 +112,7 @@ const Portfolio = () => {
           ) : (
             <div className="mt-6 overflow-x-auto">
               <table className="w-full min-w-[720px] border-collapse text-left">
-                <thead className="bg-slate-950/70 text-slate-500 text-xs font-black tracking-widest">
+                <thead className="bg-slate-950/70 text-slate-500 text-sm font-black tracking-widest">
                   <tr>
                     <th className="p-5">Time</th>
                     <th className="p-5">Market</th>
@@ -135,7 +137,7 @@ const Portfolio = () => {
                         <td className="p-5">
                           <span
                             className={`inline-flex px-3 py-1 text-xs font-black tracking-tighter ${
-                              trade.type === 'sell'
+                              trade.type === 'sell' || trade.side === 'no'
                                 ? 'text-rose-400'
                                 : 'text-emerald-400'
                             }`}

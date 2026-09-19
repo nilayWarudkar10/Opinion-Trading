@@ -2,14 +2,14 @@ import React, { useState } from 'react';
 import axios from 'axios';
 
 const Admin = () => {
-  const [form, setForm] = useState({ question: '', category: 'Sports' });
+  const [form, setForm] = useState({ question: '', category: 'Tech & AI' });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
       await axios.post('http://localhost:5000/api/markets/add', form);
-      alert("Market Created! 🚀");
-      setForm({ question: '', category: 'Sports' });
+      alert("Market Created!");
+      setForm({ question: '', category: 'Tech & AI' });
     } catch (err) {
       alert("Failed to create market");
     }
@@ -29,11 +29,20 @@ const Admin = () => {
           className="w-full p-4 bg-slate-950 rounded-xl text-white border border-slate-700"
           onChange={e => setForm({...form, category: e.target.value})}
         >
-          <option>Sports</option>
-          <option>Crypto</option>
-          <option>Politics</option>
+          <option>Tech &amp; AI</option>
+          <option>Global Macroeconomics</option>
+          <option>Crypto &amp; Web3</option>
+          <option>Space &amp; Aviation</option>
+          <option>Science &amp; Biotech</option>
+          <option>Climate &amp; Energy</option>
+          <option>Sports &amp; Cricket</option>
+          <option>Esports &amp; Gaming</option>
+          <option>Entertainment &amp; Box Office</option>
+          <option>Creator Economy</option>
+          <option>Geopolitics &amp; Policy</option>
+          <option>Startups &amp; Venture Capital</option>
         </select>
-        <button className="w-full bg-blue-600 py-4 rounded-xl font-bold text-white hover:bg-blue-500 transition-all">
+        <button className="w-full bg-[#6d9cf2] py-4 rounded-xl font-bold text-white hover:bg-[#5d87d6] transition-all">
           Launch Market
         </button>
       </form>

@@ -25,7 +25,7 @@ exports.createMarket = async (req, res) => {
 // 2. Get All Active Markets (For the Frontend list)
 exports.getMarkets = async (req, res) => {
   try {
-    const markets = await Market.find({ status: 'active' });
+    const markets = await Market.find({ status: 'active' }).sort({ createdAt: -1 });
     res.json(markets);
   } catch (err) {
     console.error(err.message);
