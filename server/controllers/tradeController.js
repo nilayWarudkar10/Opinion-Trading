@@ -2,6 +2,15 @@ const Trade = require('../models/Trade');
 const User = require('../models/User');
 const Market = require('../models/Market');
 
+const BASE_PRICE = 50;
+const PRICE_SLOPE = 1;
+
+const curvePrice = (supply) => BASE_PRICE + PRICE_SLOPE * supply;
+
+const curveArea = (supply) => BASE_PRICE * supply + (PRICE_SLOPE * supply * supply) / 2;
+
+const integralCost = (oldSupply, newSupply) => curveArea(newSupply) - curveArea(oldSupply);
+
 // --- BUY LOGIC (INDEPENDENT POOL INTEGRAL) ---
 exports.placeTrade = async (req, res) => {
   try {
@@ -21,16 +30,9 @@ exports.placeTrade = async (req, res) => {
     }
 
     // 🚨 FIX: Extract the starting shares dedicated strictly to the active side
-    const startingShares = parseInt(side === 'yes' ? market.totalYesShares : market.totalNoShares, 10) || 0;
-    const basePrice = 50; 
-
-    // Calculate exact integral cost using the independent stair step mapping
-    let totalCost = 0;
-    for (let i = 0; i < qty; i++) {
-      const sharePrice = basePrice + (startingShares + i);
-      totalCost += sharePrice;
-      console.log(`> Share ${startingShares + i + 1} Step Cost: ₹${sharePrice}`);
-    }
+    const startingShares = Number(side === 'yes' ? market.totalYesShares : market.totalNoShares) || 0;
+    const endingShares = startingShares + qty;
+    const totalCost = integralCost(startingShares, endingShares);
 
     console.log(`Guaranteed Total Cost: ₹${totalCost}`);
 
@@ -55,7 +57,7 @@ exports.placeTrade = async (req, res) => {
       userUpdateQuery = {
         $inc: { walletBalance: -totalCost },
         $push: { 
-          portfolio: { marketId: market._id, side, quantity: qty, avgPrice: Math.round(totalCost / qty) } 
+          portfolio: { marketId: market._id, side, quantity: qty, avgPrice: totalCost / qty }
         }
       };
     }
@@ -64,11 +66,11 @@ exports.placeTrade = async (req, res) => {
 
     // 🚨 FIX: Save the new totals directly to their distinct inventory variables
     if (side === 'yes') {
-      market.totalYesShares = startingShares + qty;
-      market.yesPrice = Math.min(99, basePrice + market.totalYesShares);
+      market.totalYesShares = endingShares;
+      market.yesPrice = curvePrice(endingShares);
     } else {
-      market.totalNoShares = startingShares + qty;
-      market.noPrice = Math.min(99, basePrice + market.totalNoShares);
+      market.totalNoShares = endingShares;
+      market.noPrice = curvePrice(endingShares);
     }
     
     market.totalLiquidity = (market.totalLiquidity || 0) + totalCost;
@@ -76,7 +78,7 @@ exports.placeTrade = async (req, res) => {
 
     const newTrade = new Trade({
       userId: updatedUser._id, marketId: market._id, side, quantity: qty,
-      pricePerShare: Math.round(totalCost / qty), totalPrice: totalCost, type: 'buy'
+      pricePerShare: totalCost / qty, totalPrice: totalCost, type: 'buy'
     });
     await newTrade.save();
 
@@ -125,32 +127,30 @@ exports.sellTrade = async (req, res) => {
     }
 
     // 🚨 STEP 1: Capture the exact, unmodified historical pool matching the traded asset side
-    const startingShares = parseInt(side === 'yes' ? market.totalYesShares : market.totalNoShares, 10) || 0;
-    const basePrice = 50;
-
-    // 🚨 STEP 2: Step backward down the stairs using clean, side-isolated metrics
-    let totalPayout = 0;
-    for (let i = 0; i < qtyToSell; i++) {
-      const sharePrice = basePrice + (startingShares - 1 - i);
-      totalPayout += sharePrice;
-      console.log(`> Share ${startingShares - i} Step Liquidation Value: ₹${sharePrice}`);
+    const startingShares = Number(side === 'yes' ? market.totalYesShares : market.totalNoShares) || 0;
+    const endingShares = startingShares - qtyToSell;
+    if (endingShares < 0) {
+      return res.status(400).json({ msg: "Market supply cannot cover this sale! ❌" });
     }
 
-    const sellBonus = 1;
-    const adjustedPayout = totalPayout + sellBonus;
+    const totalPayout = integralCost(endingShares, startingShares);
 
-    console.log(`Guaranteed Total Payout: ₹${adjustedPayout}`);
+    console.log(`Guaranteed Total Payout: ₹${totalPayout}`);
+
+    if ((market.totalLiquidity || 0) < totalPayout) {
+      return res.status(400).json({ msg: "Insufficient market liquidity! ❌" });
+    }
 
     // STEP 3: Write structural properties back to database documents
     if (side === 'yes') {
-      market.totalYesShares = Math.max(0, startingShares - qtyToSell);
-      market.yesPrice = Math.max(1, basePrice + market.totalYesShares);
+      market.totalYesShares = endingShares;
+      market.yesPrice = curvePrice(endingShares);
     } else {
-      market.totalNoShares = Math.max(0, startingShares - qtyToSell);
-      market.noPrice = Math.max(1, basePrice + market.totalNoShares);
+      market.totalNoShares = endingShares;
+      market.noPrice = curvePrice(endingShares);
     }
 
-    market.totalLiquidity = Math.max(0, (market.totalLiquidity || 0) - totalPayout);
+    market.totalLiquidity = (market.totalLiquidity || 0) - totalPayout;
     await market.save();
 
     let userUpdateQuery = {};
@@ -158,13 +158,13 @@ exports.sellTrade = async (req, res) => {
 
     if (finalRemainingQty === 0) {
       userUpdateQuery = {
-        $inc: { walletBalance: adjustedPayout },
+        $inc: { walletBalance: totalPayout },
         $pull: { portfolio: { marketId: market._id, side: side } }
       };
     } else {
       userUpdateQuery = {
         $inc: { 
-          walletBalance: adjustedPayout,
+          walletBalance: totalPayout,
           [`portfolio.${positionIndex}.quantity`]: -qtyToSell 
         }
       };
@@ -174,7 +174,7 @@ exports.sellTrade = async (req, res) => {
 
     const sellRecord = new Trade({
       userId: updatedUser._id, marketId: market._id, side, quantity: qtyToSell,
-      pricePerShare: Math.round(adjustedPayout / qtyToSell), totalPrice: adjustedPayout, type: 'sell'
+      pricePerShare: totalPayout / qtyToSell, totalPrice: totalPayout, type: 'sell'
     });
     await sellRecord.save();
 

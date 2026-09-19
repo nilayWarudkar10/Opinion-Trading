@@ -6,6 +6,8 @@ const MarketSchema = new mongoose.Schema({
   description: { type: String, default: "No description provided." },
   yesPrice: { type: Number, default: 50 },
   noPrice: { type: Number, default: 50 },
+  totalYesShares: { type: Number, default: 0 },
+  totalNoShares: { type: Number, default: 0 },
   status: { type: String, default: "active" }, // Automatically sets to active
   totalLiquidity: { type: Number, default: 0 },
   createdAt: { type: Date, default: Date.now }

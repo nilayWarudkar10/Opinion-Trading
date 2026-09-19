@@ -36,7 +36,7 @@ const TradeModal = ({ market, side, onClose }) => {
     }
   }
 
-  const payoutDisplayAmount = tradeType === 'buy' ? totalAmount : totalAmount + 1;
+  const payoutDisplayAmount = totalAmount;
 
   const handleAction = async () => {
     if (qtyInput <= 0) {
