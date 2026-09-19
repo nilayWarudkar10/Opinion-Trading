@@ -1,2 +1,0 @@
-username for mongodb : nilaywarudkar5_db_user
-password : qwerty1234[][]
